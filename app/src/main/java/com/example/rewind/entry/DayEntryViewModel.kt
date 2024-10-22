@@ -54,25 +54,16 @@ class DayEntryViewModel(application: Application) :AndroidViewModel(application)
         _bitmapsURI.value += bitmapURI
     }
 
-    fun saveToDB(){
+    fun saveToDB(): Boolean{
+        var result = false;
         coroutineScope.launch {
-//            runBlocking {
-//                Log.i("DayEntryViewModel", repository.getData().toString())
-//            }
-            if(repository.saveToDatabase(bitmapsURI.value, description.value, dayRating.value)){
-                //saved
-            }
-            else{
-
-            }
+            result = repository.saveToDatabase(bitmapsURI.value, description.value, dayRating.value)
         }
+        return result
     }
 
     override fun onCleared() {
         super.onCleared()
         Log.i("DayEntryViewModel", "Cleared ViewModel")
     }
-
-//    var dayRating =
-
 }

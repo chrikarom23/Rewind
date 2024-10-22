@@ -6,6 +6,7 @@ import android.content.Context.MODE_PRIVATE
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Spring
@@ -95,6 +96,7 @@ fun DayEntry(
     modifier: Modifier = Modifier,
     navController: NavHostController,
 ) {
+    //Should try using navbackstack instead. viewModel created in the activities scope persists even after navigating back from the first call.
     val activity = LocalContext.current as ViewModelStoreOwner
     val viewModel: DayEntryViewModel = viewModel(activity)
 
@@ -293,14 +295,22 @@ fun BottomBarEntry(
     modifier: Modifier = Modifier,
     navController: NavHostController,
     bitmapsStateFlow: StateFlow<List<Bitmap>>,
-    saveFunction: () -> Unit,
+    saveFunction: () -> Boolean,
     saveBitmapURI: (String) -> Unit
 ) {
     NavigationBar {
         val context = LocalContext.current.applicationContext
         val bitmaps by bitmapsStateFlow.collectAsState()
         Row (horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()){
-            ElevatedButton(onClick = { savePhoto(bitmaps = bitmaps, context = context, saveBitmapURI = saveBitmapURI); saveFunction() ;navController.navigate(Screen.RewindScreen.route)}) {
+            ElevatedButton(onClick = {
+                savePhoto(bitmaps = bitmaps, context = context, saveBitmapURI = saveBitmapURI);
+                if(saveFunction()){
+                    Toast.makeText(context,"Successfully saved your entry!", Toast.LENGTH_LONG).show()
+                }
+                else{
+                    Toast.makeText(context,"Successfully saved your entry!", Toast.LENGTH_LONG).show()
+                }
+                navController.navigate(Screen.RewindScreen.route)}) {
                 Icon(imageVector = Icons.Default.AddTask, contentDescription = "Add Entry", Modifier.size(35.dp))
             }
         }
@@ -321,21 +331,6 @@ fun savePhoto(bitmaps: List<Bitmap>, context: Context, saveBitmapURI: (String) -
         }
     }
 }
-//
-//private val testData = listOf(
-//    R.drawable.dummy1,
-//    R.drawable.dummy2,
-//    R.drawable.dummy3,
-//    R.drawable.dummy1,
-//    R.drawable.dummy2,
-//    R.drawable.dummy3,
-//    R.drawable.dummy1,
-//    R.drawable.dummy2,
-//    R.drawable.dummy3
-//).shuffled()
-//
-
-
 
 @Preview(showBackground = true)
 @Composable
