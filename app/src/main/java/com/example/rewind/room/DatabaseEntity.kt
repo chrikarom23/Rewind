@@ -21,7 +21,22 @@ data class DayEntry (
     val dayRating: Int,
     @ColumnInfo(name = "imageURI")
     val imageURIS: List<String>
-)
+){
+    override fun toString(): String {
+        return buildString {
+            append(dayWord)
+            append("\n")
+            append(date)
+            append("\n")
+            append(description)
+            append("\n")
+            append(dayRating)
+            append("\n")
+            append(imageURIS)
+            append("\n")
+        }
+    }
+}
 
 
 class Converters {

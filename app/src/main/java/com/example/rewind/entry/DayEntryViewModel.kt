@@ -3,6 +3,7 @@ package com.example.rewind.entry
 import android.app.Application
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import com.example.rewind.repository.Repository
@@ -19,7 +20,8 @@ class DayEntryViewModel(application: Application) :AndroidViewModel(application)
     private val _bitmaps = MutableStateFlow<List<Bitmap>>(emptyList())
     val bitmaps = _bitmaps.asStateFlow()
 
-    val description = mutableStateOf("")
+    val _description = mutableStateOf("")
+    val description = derivedStateOf { _description.value }
 
     private val _dayRating = MutableStateFlow<Int>(0)
     val dayRating = _dayRating
@@ -43,7 +45,7 @@ class DayEntryViewModel(application: Application) :AndroidViewModel(application)
     }
 
     fun updateDescription(description: String){
-        this.description.value = description
+        this._description.value = description
     }
 
     fun setRating(rating: Int){
@@ -57,7 +59,7 @@ class DayEntryViewModel(application: Application) :AndroidViewModel(application)
     fun saveToDB(): Boolean{
         var result = false;
         coroutineScope.launch {
-            result = repository.saveToDatabase(bitmapsURI.value, description.value, dayRating.value)
+            result = repository.saveToDatabase(bitmapsURI.value, _description.value, dayRating.value)
         }
         return result
     }

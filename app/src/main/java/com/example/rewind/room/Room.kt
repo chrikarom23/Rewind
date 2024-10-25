@@ -16,8 +16,8 @@ interface DaysDao{
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertDay(dayEntry: DayEntry)
 
-    @Query("SELECT * FROM DAY_ENTRY LIMIT 1")
-    suspend fun getAll(): DayEntry
+    @Query("SELECT * FROM DAY_ENTRY")
+    suspend fun getAll(): List<DayEntry>
 }
 
 @Database(entities = [DayEntry::class], version=1, exportSchema = true)

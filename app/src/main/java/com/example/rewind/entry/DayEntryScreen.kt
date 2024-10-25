@@ -45,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -95,17 +96,29 @@ fun DayEntryPermissionCheck(modifier: Modifier = Modifier) {
 fun DayEntry(
     modifier: Modifier = Modifier,
     navController: NavHostController,
+    viewModel: DayEntryViewModel = viewModel()
 ) {
     //Should try using navbackstack instead. viewModel created in the activities scope persists even after navigating back from the first call.
-    val activity = LocalContext.current as ViewModelStoreOwner
-    val viewModel: DayEntryViewModel = viewModel(activity)
+    DayEntryScreen(
+        navController = navController,
+        bitmaps = viewModel.bitmaps,
+        rating = viewModel::setRating,
+        saveFunction = viewModel::saveToDB,
+        addURI = viewModel::addURI,
+        updateDescription = viewModel::updateDescription,
+        description = viewModel.description
+    )
 
+}
+
+@Composable
+fun DayEntryScreen(modifier: Modifier = Modifier, navController: NavHostController, bitmaps: StateFlow<List<Bitmap>>, rating: (Int) -> Unit, saveFunction: () -> Boolean, addURI: (String)-> Unit, updateDescription: (String) -> Unit, description: State<String>) {
     DayEntryPermissionCheck()
     Scaffold (
-        bottomBar = { BottomBarEntry(navController = navController, bitmapsStateFlow = viewModel.bitmaps, saveFunction = viewModel::saveToDB, saveBitmapURI = viewModel::addURI)},
+        bottomBar = { BottomBarEntry(navController = navController, bitmapsStateFlow = bitmaps, saveFunction = saveFunction, saveBitmapURI = addURI)},
         containerColor = MaterialTheme.colorScheme.primaryContainer
     ){
-        padding ->
+            padding ->
         Surface (
             modifier = Modifier
                 .padding(padding)
@@ -122,13 +135,13 @@ fun DayEntry(
                         .padding(4.dp)
                         .padding(horizontal = 8.dp)
                         .padding(top = 8.dp),
-                    rating = viewModel::setRating)
+                    rating = rating)
                 DayDescriptionValue(
                     Modifier
                         .padding(4.dp)
                         .padding(horizontal = 8.dp),
-                    updateDescription = viewModel::updateDescription,
-                    currentText = viewModel.description)
+                    updateDescription = updateDescription,
+                    currentText = description)
                 ExternalPhotoRequest(
                     Modifier
                         .padding(4.dp)
@@ -138,7 +151,7 @@ fun DayEntry(
                         .padding(4.dp)
                         .padding(bottom = 4.dp),
                     navController = navController,
-                    bitmapListStateFlow = viewModel.bitmaps)
+                    bitmapListStateFlow = bitmaps)
             }
         }
     }
@@ -186,7 +199,7 @@ fun TakenPicturesCarousel(
 fun DayDescriptionValue(
     modifier: Modifier = Modifier,
     updateDescription: (String) -> Unit,
-    currentText: MutableState<String>
+    currentText: State<String>
 ) {
     val description by currentText
     Column(modifier = modifier){
@@ -308,7 +321,7 @@ fun BottomBarEntry(
                     Toast.makeText(context,"Successfully saved your entry!", Toast.LENGTH_LONG).show()
                 }
                 else{
-                    Toast.makeText(context,"Successfully saved your entry!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context,"You've Already made an entry today!!!", Toast.LENGTH_LONG).show()
                 }
                 navController.navigate(Screen.RewindScreen.route)}) {
                 Icon(imageVector = Icons.Default.AddTask, contentDescription = "Add Entry", Modifier.size(35.dp))

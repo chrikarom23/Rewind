@@ -76,10 +76,9 @@ fun CameraPreview(controller: LifecycleCameraController, modifier: Modifier = Mo
 @Composable
 fun CameraScreen(
     modifier: Modifier = Modifier,
+    viewModel: DayEntryViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val activity = context as ViewModelStoreOwner
-    val viewModel: DayEntryViewModel = viewModel(activity)
     val controller = remember{
         LifecycleCameraController(context).apply {
             setEnabledUseCases(
