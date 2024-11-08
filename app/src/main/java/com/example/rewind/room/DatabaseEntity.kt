@@ -16,7 +16,7 @@ data class DayEntry (
     @ColumnInfo(name = "date")
     val date: String,
     @ColumnInfo(name = "description")
-    val description: String,
+    var description: String,
     @ColumnInfo(name = "day_rating")
     val dayRating: Int,
     @ColumnInfo(name = "imageURI")

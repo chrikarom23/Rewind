@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,6 +59,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rewind.entry.DayEntryViewModel
+import com.example.rewind.entry.SelectedBitmap
 import kotlinx.coroutines.launch
 
 @Composable
@@ -76,7 +78,7 @@ fun CameraPreview(controller: LifecycleCameraController, modifier: Modifier = Mo
 @Composable
 fun CameraScreen(
     modifier: Modifier = Modifier,
-    viewModel: DayEntryViewModel = viewModel()
+    viewModel: DayEntryViewModel = viewModel(),
 ) {
     val context = LocalContext.current
     val controller = remember{
@@ -87,7 +89,7 @@ fun CameraScreen(
         }
     }
     val scaffoldState = rememberBottomSheetScaffoldState()
-    val bitmaps by viewModel.bitmaps.collectAsState()
+    val bitmaps by viewModel.selectedBitmaps.collectAsState()
     val scope = rememberCoroutineScope()
     BottomSheetScaffold(
         sheetContent = {
@@ -177,7 +179,7 @@ fun CameraScreen(
 
 @Composable
 fun PhotoBottomSheetContent(
-    bitmaps: List<Bitmap>,
+    bitmaps: List<SelectedBitmap>,
     modifier: Modifier = Modifier
 ) {
     Column(modifier= modifier.padding(bottom = 100.dp)) {
@@ -195,11 +197,13 @@ fun PhotoBottomSheetContent(
                 contentPadding = PaddingValues(16.dp),
                 modifier = modifier
             ) {
-                items(bitmaps){ bitmap ->
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier.clip(RoundedCornerShape(10.dp)))
+                items(bitmaps){ selectedBitmap ->
+                    Box(modifier = Modifier.clip(RoundedCornerShape(10.dp))){
+                        Image(
+                            bitmap = selectedBitmap.bitmap.asImageBitmap(),
+                            contentDescription = null)
+                        Checkbox(modifier = Modifier.align(Alignment.TopEnd).padding(0.dp), checked = selectedBitmap.isSelected.value, onCheckedChange = { selectedBitmap.isSelected.value = !selectedBitmap.isSelected.value})
+                    }
                 }
             }
         }

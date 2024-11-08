@@ -3,6 +3,7 @@ package com.example.rewind.entry
 import android.app.Application
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
@@ -17,10 +18,13 @@ import kotlinx.coroutines.launch
 
 class DayEntryViewModel(application: Application) :AndroidViewModel(application) {
 
-    private val _bitmaps = MutableStateFlow<List<Bitmap>>(emptyList())
-    val bitmaps = _bitmaps.asStateFlow()
+//    private val _bitmaps = MutableStateFlow<List<Bitmap>>(emptyList())
+//    val bitmaps = _bitmaps.asStateFlow()
 
-    val _description = mutableStateOf("")
+    private val _selectedBitmaps = MutableStateFlow<List<SelectedBitmap>>(emptyList())
+    val selectedBitmaps = _selectedBitmaps.asStateFlow()
+
+    private val _description = mutableStateOf("")
     val description = derivedStateOf { _description.value }
 
     private val _dayRating = MutableStateFlow<Int>(0)
@@ -40,8 +44,8 @@ class DayEntryViewModel(application: Application) :AndroidViewModel(application)
     }
 
     fun addPhoto(bitmap: Bitmap){
-        _bitmaps.value += bitmap
-        Log.i("DayEntryViewModel", "bitmaps: ${bitmaps.value}")
+        _selectedBitmaps.value += SelectedBitmap(bitmap)
+        Log.i("DayEntryViewModel", "bitmaps: ${_selectedBitmaps.value}")
     }
 
     fun updateDescription(description: String){
@@ -58,8 +62,18 @@ class DayEntryViewModel(application: Application) :AndroidViewModel(application)
 
     fun saveToDB(): Boolean{
         var result = false;
+        if(_description.value.trim()==""){
+            _description.value = when(dayRating.value){
+                1-> "To better days \uD83E\uDD42..."
+                2->"To better days \uD83E\uDD42..."
+                3->"Yet another day passed by..."
+                4->"It was a good day..."
+                5->"It was a great day..."
+                else ->"Everything was alright \uD83D\uDE0C..."
+            }
+        }
         coroutineScope.launch {
-            result = repository.saveToDatabase(bitmapsURI.value, _description.value, dayRating.value)
+            result = repository.saveToDatabase(bitmapsURI.value, description.value, dayRating.value)
         }
         return result
     }
@@ -69,3 +83,5 @@ class DayEntryViewModel(application: Application) :AndroidViewModel(application)
         Log.i("DayEntryViewModel", "Cleared ViewModel")
     }
 }
+
+data class SelectedBitmap(val bitmap: Bitmap, var isSelected: MutableState<Boolean> = mutableStateOf(true))

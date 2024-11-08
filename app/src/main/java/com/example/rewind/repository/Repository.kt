@@ -1,18 +1,17 @@
 package com.example.rewind.repository
 
-import com.example.rewind.domain.Day
+import androidx.lifecycle.LiveData
 import com.example.rewind.room.DayEntry
 import com.example.rewind.room.RewindDatabase
 import java.time.LocalDate
 
 class Repository(private val database: RewindDatabase) {
 
-
     suspend fun saveToDatabase(bitmapsURI: List<String>, description: String, dayRating: Int): Boolean {
         val localDate = LocalDate.now()
-
+        println(localDate.toString())
         return try{
-            database.daysDao().insertDay(DayEntry(localDate.dayOfWeek.toString(),
+            database.daysDao().insertDay(DayEntry(pascalCase(localDate.dayOfWeek.toString()),
                 localDate.toString(),description,dayRating,bitmapsURI))
             true
         }
@@ -21,9 +20,19 @@ class Repository(private val database: RewindDatabase) {
             false
         }
     }
-
-    suspend fun getData(): List<DayEntry> {
-        return database.daysDao().getAll()
+    
+    private fun pascalCase(dayOfWeek: String): String {
+        return buildString {
+            for(i in dayOfWeek.indices){
+                if(i==0) append(dayOfWeek[i])
+                else append(dayOfWeek[i].lowercaseChar())
+            }
+        }
     }
 
+    val daysGoneBy: LiveData<List<DayEntry>> = database.daysDao().getAll()
+
+    fun getRandomDay(): DayEntry{
+        return database.daysDao().getRandomDay()
+    }
 }
