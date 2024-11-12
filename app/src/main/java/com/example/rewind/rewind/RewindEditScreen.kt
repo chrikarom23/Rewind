@@ -1,8 +1,11 @@
 package com.example.rewind.rewind
 
+import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -10,6 +13,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -30,6 +34,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
@@ -45,7 +51,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,25 +69,50 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.compose.RewindTheme
 import com.example.rewind.R
+import com.example.rewind.Screen
+import com.example.rewind.entry.SelectedBitmap
+import com.example.rewind.entry.savePhotos
 import com.example.rewind.room.DayEntry
+import java.time.LocalDate
 
 
 @Composable
 fun DetailDayEntry(
     modifier: Modifier = Modifier,
     dayEntry: DayEntry,
-    updateDayEntry: (String, Int, List<String>) -> Boolean
+    updateDayEntry: (String, Int, List<String>) -> Boolean,
+    selectedPhotos: List<SelectedBitmap>,
+    dismissDialog: () -> Unit = {},
+    navigateTo: (String) -> Unit,
+    editState: Boolean,
+    turnOnEdits: () -> Unit,
+    turnOffEdits: () -> Unit,
+    editable: Boolean
 ) {
-    var editState by rememberSaveable { mutableStateOf(false) }
-    var updatedDescription by remember { mutableStateOf(dayEntry.description) }
-    var updatedDayRating by remember { mutableIntStateOf(dayEntry.dayRating) }
-    val updatedDayPhotoURISs by remember { mutableStateOf(dayEntry.imageURIS) }
-    fun changeEditState() {
-        editState = !editState
+    var description by remember { mutableStateOf(dayEntry.description) }
+    var dayRating by remember { mutableIntStateOf(dayEntry.dayRating) }
+    var dayPhotosURIs by remember { mutableStateOf(dayEntry.imageURIS) }
+
+    var loading by remember{ mutableStateOf(false) }
+
+    fun updateDayRating(newRating: Int){
+        dayRating = newRating
     }
 
-    fun updateDayRating(newRating: Int) {
-        updatedDayRating = newRating
+    fun updateDayPhotosURIs(bitmapURI: String){
+        if(!dayPhotosURIs.contains(bitmapURI))dayPhotosURIs += bitmapURI
+    }
+
+    fun saveCurrentChanges(context: Context){
+        loading = true
+        println(selectedPhotos)
+        println(dayPhotosURIs)
+        dayPhotosURIs = emptyList()
+        savePhotos(selectedPhotos,context,::updateDayPhotosURIs)
+        updateDayEntry(description, dayRating,dayPhotosURIs)
+        loading = false
+        turnOffEdits()
+        dismissDialog()
     }
 
     Surface(
@@ -93,44 +123,54 @@ fun DetailDayEntry(
         shadowElevation = 4.dp,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHigh)
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .padding(vertical = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            item {
-                DetailDescriptionHeading(
-                    dayEntry = dayEntry,
-                    updatedDayRating = updatedDayRating,
-                    updateDayRating = ::updateDayRating,
-                    editState = editState)
-            }
-            item {
-                TextField(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .wrapContentHeight(),
-                    value = updatedDescription,
-                    onValueChange = { newDescription -> updatedDescription = newDescription },
-                    enabled = editState,
-                    readOnly = !editState,
-                    colors = TextFieldDefaults.colors(
-                        disabledContainerColor = Color.Transparent,
-                        disabledTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        focusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    shape = MaterialTheme.shapes.medium,
-                    textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
-                )
-            }
-            item {
-                EditRewindPhotoCarousel(imageURIS = updatedDayPhotoURISs,editState = editState)
-            }
-            item {
-                EditRewindButton(editState = editState, changeEditState = ::changeEditState)
+        Box{
+            if(loading) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            LazyColumn(
+                modifier = Modifier
+                    .padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                item {
+                    DetailDescriptionHeading(
+                        dayEntry = dayEntry,
+                        updatedDayRating = dayRating,
+                        updateDayRating = ::updateDayRating,
+                        edit = editState
+                    )
+                }
+                item {
+                    TextField(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .wrapContentHeight(),
+                        value = description,
+                        onValueChange = { newDescription -> description = newDescription },
+                        enabled = editState,
+                        readOnly = !editState,
+                        colors = TextFieldDefaults.colors(
+                            disabledContainerColor = Color.Transparent,
+                            disabledTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            focusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ),
+                        shape = MaterialTheme.shapes.medium,
+                        textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
+                    )
+                }
+                item {
+                    EditRewindPhotoCarousel(
+                        edit = editState,
+                        selectedPhotos = selectedPhotos,
+                        navigateTo = navigateTo,
+                        changeEditState = turnOnEdits,
+                        editable = editable
+                    )
+                }
+                item {
+                    if(editable) EditRewindButton(edit = editState, changeEditState = turnOnEdits, saveChanges = ::saveCurrentChanges)
+                }
             }
         }
     }
@@ -139,36 +179,49 @@ fun DetailDayEntry(
 @Composable
 fun EditRewindButton(
     modifier: Modifier = Modifier,
-    editState: Boolean,
-    changeEditState: () -> Unit
+    edit: Boolean,
+    changeEditState: () -> Unit,
+    saveChanges: (Context) -> Unit
 ) {
-    FilledTonalButton(
-        onClick = { changeEditState() },
-        modifier = Modifier.padding(horizontal = 6.dp),
-        shape = MaterialTheme.shapes.medium,
-        elevation = ButtonDefaults.elevatedButtonElevation(),
-        border = BorderStroke(
-            0.5.dp,
-            MaterialTheme.colorScheme.surfaceContainerHighest
-        )
-    ) {
-        AnimatedVisibility(visible = !editState) {
-            Row {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Edit entry",
-                    modifier = Modifier.size(22.dp)
+        val context = LocalContext.current
+        AnimatedVisibility(visible = !edit) {
+            FilledTonalButton(
+                onClick = { changeEditState() },
+                modifier = Modifier.padding(horizontal = 6.dp),
+                shape = MaterialTheme.shapes.medium,
+                elevation = ButtonDefaults.elevatedButtonElevation(),
+                border = BorderStroke(
+                    0.5.dp,
+                    MaterialTheme.colorScheme.surfaceContainerHighest
                 )
-                Text(
-                    text = "Edit",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(start = 2.dp)
-                )
+            ) {
+                Row {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit entry",
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text(
+                        text = "Edit",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(start = 2.dp)
+                    )
+                }
             }
         }
-        AnimatedVisibility(visible = editState) {
+        AnimatedVisibility(visible = edit) {
+            FilledTonalButton(
+                onClick = { saveChanges(context) },
+                modifier = Modifier.padding(horizontal = 6.dp),
+                shape = MaterialTheme.shapes.medium,
+                elevation = ButtonDefaults.elevatedButtonElevation(),
+                border = BorderStroke(
+                    0.5.dp,
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                )
+            ) {
             Row {
                 Icon(
                     imageVector = Icons.Default.Save,
@@ -190,16 +243,17 @@ fun EditRewindButton(
 @Composable
 fun EditRewindPhotoCarousel(
     modifier: Modifier = Modifier,
-    imageURIS: List<String>,
-    editState: Boolean
+    edit: Boolean,
+    selectedPhotos: List<SelectedBitmap>,
+    navigateTo: (String) -> Unit,
+    changeEditState: () -> Unit,
+    editable: Boolean
 ) {
-    LazyRow(
-        modifier = Modifier.fillMaxHeight(),
-        contentPadding = PaddingValues(start = 6.dp, end = 6.dp, bottom = 4.dp)
-    ) {
-        items(imageURIS) { uri ->
-            val img = loadPhoto(uri, LocalContext.current)
-            if (img != null) {
+        LazyRow(
+            modifier = Modifier.fillMaxHeight(),
+            contentPadding = PaddingValues(start = 6.dp, end = 6.dp, bottom = 4.dp)
+        ) {
+            items(selectedPhotos) { item ->
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     shape = MaterialTheme.shapes.medium,
@@ -212,16 +266,25 @@ fun EditRewindPhotoCarousel(
                     ),
                     shadowElevation = 2.dp
                 ) {
-                    Image(
-                        bitmap = img.asImageBitmap(),
-                        contentDescription = null,
-                        contentScale = ContentScale.FillHeight
-                    )
+                    Box {
+                        Image(
+                            bitmap = item.bitmap.asImageBitmap(),
+                            contentDescription = null,
+                            contentScale = ContentScale.FillHeight
+                        )
+                        AnimatedVisibility(visible = edit, enter = fadeIn(animationSpec = tween(durationMillis = 250)), exit = fadeOut(animationSpec = tween(durationMillis = 250))) {
+                            Checkbox(modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(0.dp),
+                                checked = item.isSelected.value,
+                                onCheckedChange = { item.isSelected.value = !item.isSelected.value })
+                        }
+                    }
+
                 }
             }
-        }
-        item {
-            AnimatedVisibility(visible = editState, enter = fadeIn(), exit = fadeOut()) {
+            item {
+                if (editable)
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     shape = MaterialTheme.shapes.medium,
@@ -237,18 +300,18 @@ fun EditRewindPhotoCarousel(
                     Column(
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable { }) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add photos",
-                            modifier = Modifier.size(44.dp),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        modifier = Modifier.clickable { navigateTo(Screen.CameraScreen.route); changeEditState()}) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add photos",
+                                modifier = Modifier.size(44.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                     }
                 }
             }
         }
-    }
+//    }
 }
 
 @Composable
@@ -257,11 +320,12 @@ fun DetailDescriptionHeading(
     dayEntry: DayEntry,
     updatedDayRating: Int,
     updateDayRating: (Int) -> Unit,
-    editState: Boolean,
+    edit: Boolean,
 ) {
     var dropDownState by remember { mutableStateOf(false) }
     val editColorChange by animateColorAsState(
-        if(editState) MaterialTheme.colorScheme.primaryContainer else Color.Transparent, label = "Edit color change"
+        if (edit) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+        label = "Edit color change"
     )
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -300,7 +364,7 @@ fun DetailDescriptionHeading(
             GetRatingIcon(
                 dayRating = updatedDayRating, modifier = Modifier
                     .clip(CircleShape)
-                    .clickable(enabled = editState) { dropDownState = !dropDownState }
+                    .clickable(enabled = edit) { dropDownState = !dropDownState }
             )
             DropdownMenu(
                 expanded = dropDownState,
@@ -346,6 +410,13 @@ fun DetailDescriptionHeading(
     }
 }
 
+fun loadAll(bitmapURIS: List<String>, context: Context, addPhoto: (Bitmap) -> Unit, addURI: (String) ->Unit){
+    for(uri in bitmapURIS){
+            loadPhoto(uri, context)?.let { addPhoto(it) }
+            addURI(uri)
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable
@@ -355,7 +426,14 @@ private fun DetailDayEntryPreview() {
             Dialog(onDismissRequest = {}) {
                 DetailDayEntry(
                     dayEntry = DayEntry("Monday", "1/1/2001", "Good ig", 4, listOf()),
-                    updateDayEntry = { i1, i2, i3 -> false })
+                    updateDayEntry = {i1,i2,i3 -> false},
+                    selectedPhotos = emptyList(),
+                    navigateTo = {},
+                    editState = false,
+                    turnOnEdits = {},
+                    editable = true,
+                    turnOffEdits = {}
+                )
             }
         }
     }
@@ -369,7 +447,14 @@ private fun DetailDayEntryNightPreview() {
             Dialog(onDismissRequest = {}) {
                 DetailDayEntry(
                     dayEntry = DayEntry("Monday", "1/1/2001", "Good ig", 4, listOf()),
-                    updateDayEntry = { i1, i2, i3 -> false })
+                    updateDayEntry = {i1,i2,i3 -> false},
+                    selectedPhotos = emptyList(),
+                    navigateTo = {},
+                    editState = false,
+                    turnOnEdits = {},
+                    turnOffEdits = {},
+                    editable = true
+                )
             }
         }
     }

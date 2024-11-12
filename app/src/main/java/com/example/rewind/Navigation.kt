@@ -1,6 +1,5 @@
 package com.example.rewind
 
-import android.app.Application
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelStoreOwner
@@ -21,17 +20,19 @@ fun Navigation() {
     NavHost(navController = navController, startDestination = Screen.RewindScreen.route){
         composable(route = Screen.RewindScreen.route) {
             val rewindViewModel: RewindViewModel = viewModel(activity as ViewModelStoreOwner)
-            RewindScreen (navController = navController, rewindViewModel = rewindViewModel)
+            val sharedViewModel: SharedViewModel = viewModel(activity as ViewModelStoreOwner)
+            RewindScreen (navController = navController, rewindViewModel = rewindViewModel,sharedViewModel = sharedViewModel)
         }
 
         composable(route = Screen.EntryScreen.route) {
             val dayEntryViewModel: DayEntryViewModel = viewModel(activity as ViewModelStoreOwner)
-            DayEntry (navController = navController, viewModel = dayEntryViewModel)
+            val sharedViewModel: SharedViewModel = viewModel(activity as ViewModelStoreOwner)
+            DayEntry (navController = navController, viewModel = dayEntryViewModel, sharedViewModel = sharedViewModel)
         }
 
         composable(route = Screen.CameraScreen.route){
-            val dayEntryViewModel: DayEntryViewModel = viewModel(activity as ViewModelStoreOwner)
-            CameraScreen(viewModel = dayEntryViewModel)
+            val sharedViewModel: SharedViewModel = viewModel(activity as ViewModelStoreOwner)
+            CameraScreen(sharedViewModel = sharedViewModel)
         }
     }
 }
@@ -40,6 +41,4 @@ sealed class Screen(val route: String){
     data object RewindScreen: Screen("rewind_screen")
     data object EntryScreen: Screen("entry_screen")
     data object CameraScreen: Screen("camera_screen")
-
-
 }

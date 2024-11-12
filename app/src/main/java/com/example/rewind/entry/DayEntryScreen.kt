@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Spring
@@ -75,9 +74,12 @@ import com.example.compose.RewindTheme
 import com.example.rewind.R
 import com.example.rewind.Screen
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rewind.SharedViewModel
+import com.example.rewind.saveData
 import kotlinx.coroutines.flow.StateFlow
+import java.nio.ByteBuffer
+import java.security.MessageDigest
 import java.time.LocalDate
-import kotlin.random.Random
 
 
 @Composable
@@ -130,13 +132,14 @@ fun RequestRewindPermission(
 fun DayEntry(
     modifier: Modifier = Modifier,
     navController: NavHostController,
-    viewModel: DayEntryViewModel = viewModel()
+    viewModel: DayEntryViewModel = viewModel(),
+    sharedViewModel: SharedViewModel = viewModel()
 ) {
     //Should try using navbackstack instead. viewModel created in the activities scope persists even after navigating back from the first call.
 
     DayEntryScreen(
         navController = navController,
-        bitmaps = viewModel.selectedBitmaps,
+        bitmaps = sharedViewModel.selectedBitmaps,
         rating = viewModel::setRating,
         saveFunction = viewModel::saveToDB,
         addURI = viewModel::addURI,
@@ -433,11 +436,12 @@ fun BottomBarEntry(
     NavigationBar {
         val context = LocalContext.current
         val bitmaps by bitmapsStateFlow.collectAsState()
+        val date = LocalDate.now().toString()
         Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
             ElevatedButton(onClick = {
-                savePhoto(bitmaps = bitmaps, context = context, saveBitmapURI = saveBitmapURI);
+                savePhotos(bitmaps = bitmaps, context = context, saveBitmapURI = saveBitmapURI)
                 saveFunction()
-                //get current date as parcelable
+                saveData(context, date)
                 navController.navigate(Screen.RewindScreen.route)
             }) {
                 Icon(
@@ -450,28 +454,35 @@ fun BottomBarEntry(
     }
 }
 
-fun savePhoto(bitmaps: List<SelectedBitmap>, context: Context, saveBitmapURI: (String) -> Unit) {
-    val date = LocalDate.now().toString()
-    val test = bitmaps.toSet()
-//    val rand = Random.nextInt()
-    test.forEach {
-            context.openFileOutput("${date}_${it.bitmap}.jpg", MODE_PRIVATE).use { stream ->
+fun savePhotos(bitmaps: List<SelectedBitmap>, context: Context, saveBitmapURI: (String) -> Unit) {
+    bitmaps.forEach {
+        val name = generateConsistentBitmapHash(it.bitmap)
+        context.openFileOutput(name, MODE_PRIVATE).use { stream ->
                 if(it.isSelected.value){
                     if (!it.bitmap.compress(Bitmap.CompressFormat.JPEG, 70, stream)) {
                         Log.e("Save Photo", "Couldn't write to file")
+                        context.deleteFile(name)
                     } else {
-                        saveBitmapURI("${date}_${it.bitmap}.jpg")
+                        saveBitmapURI(name)
                     }
                 }
                 else{
-                    println("asdlka")
-                    context.deleteFile("${date}_${it.bitmap}.jpg")
+                    context.deleteFile(name)
                 }
         }
     }
 //    for (i in 1..test.size) {
 //
 //    }
+}
+
+fun generateConsistentBitmapHash(bitmap: Bitmap): String {
+    val buffer = ByteBuffer.allocate(bitmap.byteCount)
+    bitmap.copyPixelsToBuffer(buffer)
+    val bytes = buffer.array()
+    val md = MessageDigest.getInstance("SHA-256")
+    val hashBytes = md.digest(bytes)
+    return hashBytes.joinToString("") { "%02x".format(it) } + ".jpg"
 }
 
 @Preview(showBackground = true)

@@ -12,7 +12,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -21,58 +20,43 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedButton
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -81,7 +65,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -92,8 +75,11 @@ import androidx.navigation.compose.rememberNavController
 import com.example.compose.RewindTheme
 import com.example.rewind.R
 import com.example.rewind.Screen
+import com.example.rewind.SharedViewModel
+import com.example.rewind.getData
 import com.example.rewind.room.DayEntry
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import java.time.LocalDate
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -101,23 +87,71 @@ fun RewindScreen(
     modifier: Modifier = Modifier,
     navController: NavHostController,
     rewindViewModel: RewindViewModel = viewModel(),
+    sharedViewModel: SharedViewModel = viewModel(),
 ) {
-    val daysGoneBy by rewindViewModel.dataURIs.observeAsState(initial = emptyList())
     val lazyListState = rememberLazyListState()
-    val canScrollForward = lazyListState.canScrollForward
-    var dayEntry by remember { mutableStateOf<DayEntry?>(null) }
+    val canScrollForward by remember {
+        derivedStateOf {
+            lazyListState.canScrollForward
+        }
+    }
+    val dayEntry by rewindViewModel.dayEntry.collectAsState() //remember { mutableStateOf<DayEntry?>(null) }
     val haptics = LocalHapticFeedback.current
+
+    val daysGoneBy by rewindViewModel.dataURIs.observeAsState()
+    val lastUpdated = getData(LocalContext.current)
+    val editState by sharedViewModel.editState.collectAsState()
+
+    val selectedBitmaps by sharedViewModel.selectedBitmaps.collectAsState()
+    val bitmapsURI by rewindViewModel.bitmapsURI.collectAsState()
+
+    fun navigateTo(route: String) {
+        navController.navigate(route)
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        floatingActionButton = { AddDayEntry(navController = navController) },
+        floatingActionButton = {
+            AddDayEntry(
+                navigateToDayEntry = ::navigateTo,
+                lastUpdated = lastUpdated
+            )
+        },
         topBar = { TopBar(getRandomDay = rewindViewModel::getRandomDay) },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-
         if (dayEntry != null) {
-            Dialog(onDismissRequest = { dayEntry = null }) {
-                DetailDayEntry(dayEntry = dayEntry!!, updateDayEntry = rewindViewModel::saveToDB)
+            if(!editState){
+                rewindViewModel.resetAll()
+                sharedViewModel.removeAll()
+                loadAll(
+                    dayEntry!!.imageURIS,
+                    LocalContext.current,
+                    sharedViewModel::addPhoto,
+                    rewindViewModel::addURI
+                )
+            }
+            val editable by remember {
+                derivedStateOf {
+                    dayEntry!!.date == LocalDate.now().toString()
+                }
+            }
+            Dialog(
+                onDismissRequest = {
+                    rewindViewModel.setDayEntry(null); sharedViewModel.removeAll(); sharedViewModel.turnOffEditing()
+                }
+            ) {
+                DetailDayEntry(
+                    dayEntry = dayEntry!!,
+                    updateDayEntry = rewindViewModel::updateDayEntry,
+                    selectedPhotos = selectedBitmaps,
+                    navigateTo = ::navigateTo,
+                    editState = editState,
+                    turnOnEdits = sharedViewModel::turnOnEditing,
+                    turnOffEdits = sharedViewModel::turnOffEditing,
+                    dismissDialog = rewindViewModel::resetAll,
+                    editable = editable
+                )
             }
         }
         LazyColumn(
@@ -131,13 +165,14 @@ fun RewindScreen(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = TopWithLogo,
         ) {
-            items(daysGoneBy) { item ->
+            items(daysGoneBy?: emptyList()) { item ->
                 DayItem(
                     item = item,
                     modifier = Modifier.combinedClickable(enabled = true, onLongClick = {
                         haptics.performHapticFeedback(
                             HapticFeedbackType.LongPress
-                        ); dayEntry = item
+                        )
+                        rewindViewModel.setDayEntry(item)
                     }, onClick = {})
                 )
             }
@@ -156,7 +191,7 @@ object TopWithLogo : Arrangement.Vertical {
             y += size
         }
 
-        outPositions[outPositions.lastIndex] = totalSize - sizes.last()
+        outPositions[outPositions.lastIndex] = totalSize - sizes.last()+20
     }
 }
 
@@ -182,8 +217,8 @@ fun LazyListFooter(modifier: Modifier = Modifier, cannotScrollForward: Boolean) 
             AnimatedVisibility(
                 visible = !cannotScrollForward,
                 modifier = Modifier.height(200.dp),
-                enter = fadeIn(animationSpec = tween(durationMillis = 700)),
-                exit = fadeOut(animationSpec = tween(durationMillis = 700))
+                enter = fadeIn(animationSpec = tween(durationMillis = 600)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 600))
             ) {
                 Text(
                     text = "Rewind",
@@ -362,16 +397,22 @@ fun loadPhoto(imageURI: String, context: Context): Bitmap? {
 }
 
 @Composable
-fun AddDayEntry(modifier: Modifier = Modifier, navController: NavHostController) {
-    FloatingActionButton(
-        onClick = {
-            navController.navigate(Screen.EntryScreen.route)
-        },
-        modifier = Modifier.size(50.dp),
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-    ) {
-        Icon(imageVector = Icons.Default.Add, contentDescription = "Add day entry")
+fun AddDayEntry(
+    modifier: Modifier = Modifier,
+    navigateToDayEntry: (String) -> Unit,
+    lastUpdated: String?
+) {
+    if (lastUpdated != null && lastUpdated != LocalDate.now().toString()) {
+        FloatingActionButton(
+            onClick = {
+                navigateToDayEntry(Screen.EntryScreen.route)
+            },
+            modifier = Modifier.size(50.dp),
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        ) {
+            Icon(imageVector = Icons.Default.Add, contentDescription = "Add day entry")
+        }
     }
 }
 
@@ -400,7 +441,7 @@ fun TopBar(modifier: Modifier = Modifier, getRandomDay: () -> Unit) {
 fun GreetingPreview() {
     RewindTheme {
         val navController = rememberNavController()
-        RewindScreenPreview(navController = navController)
+        RewindScreenPreview()
     }
 }
 
@@ -410,13 +451,13 @@ fun GreetingPreview() {
 fun GreetingPreviewNight() {
     RewindTheme {
         val navController = rememberNavController()
-        RewindScreenPreview(navController = navController)
+        RewindScreenPreview()
     }
 }
 
 
 @Composable
-fun RewindScreenPreview(modifier: Modifier = Modifier, navController: NavHostController) {
+fun RewindScreenPreview(modifier: Modifier = Modifier) {
     val dayData = mutableListOf(
         DayEntry("Monday", "1/1/2001", "Good ig", 4, listOf()),
         DayEntry("Tuesday", "1/1/2001", "Good ig", -1, listOf()),
@@ -432,7 +473,12 @@ fun RewindScreenPreview(modifier: Modifier = Modifier, navController: NavHostCon
 
     Scaffold(
         Modifier.fillMaxSize(),
-        floatingActionButton = { AddDayEntry(navController = navController) },
+        floatingActionButton = {
+            AddDayEntry(
+                navigateToDayEntry = {},
+                lastUpdated = LocalDate.now().toString()
+            )
+        },
         topBar = { TopBar(getRandomDay = { }) },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->

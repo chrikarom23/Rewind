@@ -1,5 +1,7 @@
 package com.example.rewind
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -23,6 +25,25 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+const val PREFS_NAME = "rewind_time_preferences"
+const val SAMPLE_KEY = "last_update_date"
+
+fun getSharedPreferences(context: Context): SharedPreferences {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+}
+
+fun saveData(context: Context, value: String) {
+    val sharedPreferences = getSharedPreferences(context)
+    with(sharedPreferences.edit()) {
+        putString(SAMPLE_KEY, value)
+        apply()
+    }
+}
+
+fun getData(context: Context): String? {
+    val sharedPreferences = getSharedPreferences(context)
+    return sharedPreferences.getString(SAMPLE_KEY, null)
+}
 
 @Preview(showBackground = true)
 @Composable

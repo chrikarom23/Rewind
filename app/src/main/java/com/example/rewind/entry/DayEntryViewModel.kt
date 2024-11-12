@@ -20,9 +20,9 @@ class DayEntryViewModel(application: Application) :AndroidViewModel(application)
 
 //    private val _bitmaps = MutableStateFlow<List<Bitmap>>(emptyList())
 //    val bitmaps = _bitmaps.asStateFlow()
-
-    private val _selectedBitmaps = MutableStateFlow<List<SelectedBitmap>>(emptyList())
-    val selectedBitmaps = _selectedBitmaps.asStateFlow()
+//
+//    private val _selectedBitmaps = MutableStateFlow<List<SelectedBitmap>>(emptyList())
+//    val selectedBitmaps = _selectedBitmaps.asStateFlow()
 
     private val _description = mutableStateOf("")
     val description = derivedStateOf { _description.value }
@@ -43,11 +43,6 @@ class DayEntryViewModel(application: Application) :AndroidViewModel(application)
         Log.i("DayEntryViewModel", "Created ViewModel")
     }
 
-    fun addPhoto(bitmap: Bitmap){
-        _selectedBitmaps.value += SelectedBitmap(bitmap)
-        Log.i("DayEntryViewModel", "bitmaps: ${_selectedBitmaps.value}")
-    }
-
     fun updateDescription(description: String){
         this._description.value = description
     }
@@ -57,11 +52,11 @@ class DayEntryViewModel(application: Application) :AndroidViewModel(application)
     }
 
     fun addURI(bitmapURI: String){
-        _bitmapsURI.value += bitmapURI
+        if(!bitmapsURI.value.contains(bitmapURI))_bitmapsURI.value += bitmapURI
     }
 
     fun saveToDB(): Boolean{
-        var result = false;
+        var result = false
         if(_description.value.trim()==""){
             _description.value = when(dayRating.value){
                 1-> "To better days \uD83E\uDD42..."

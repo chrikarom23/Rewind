@@ -55,10 +55,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.rewind.entry.DayEntryViewModel
+import com.example.rewind.SharedViewModel
 import com.example.rewind.entry.SelectedBitmap
 import kotlinx.coroutines.launch
 
@@ -78,7 +77,7 @@ fun CameraPreview(controller: LifecycleCameraController, modifier: Modifier = Mo
 @Composable
 fun CameraScreen(
     modifier: Modifier = Modifier,
-    viewModel: DayEntryViewModel = viewModel(),
+    sharedViewModel: SharedViewModel = viewModel(),
 ) {
     val context = LocalContext.current
     val controller = remember{
@@ -89,7 +88,7 @@ fun CameraScreen(
         }
     }
     val scaffoldState = rememberBottomSheetScaffoldState()
-    val bitmaps by viewModel.selectedBitmaps.collectAsState()
+    val bitmaps by sharedViewModel.selectedBitmaps.collectAsState()
     val scope = rememberCoroutineScope()
     BottomSheetScaffold(
         sheetContent = {
@@ -159,7 +158,7 @@ fun CameraScreen(
                             contentDescription = "Open photos")
                     }
                     IconButton(onClick = {
-                        takePhoto(controller = controller, onPhotoTaken = viewModel::addPhoto ,context = context)
+                        takePhoto(controller = controller, onPhotoTaken = sharedViewModel::addPhoto ,context = context)
                     },
                         modifier = Modifier
                             .padding(4.dp)
