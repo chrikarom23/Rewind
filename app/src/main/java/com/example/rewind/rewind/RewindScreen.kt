@@ -206,7 +206,7 @@ object TopWithLogo : Arrangement.Vertical {
             y += size
         }
 
-        outPositions[outPositions.lastIndex] = totalSize - sizes.last()+20
+        outPositions[outPositions.lastIndex] = totalSize - sizes.last()
     }
 }
 
@@ -225,7 +225,8 @@ fun LazyListFooter(modifier: Modifier = Modifier, cannotScrollForward: Boolean) 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp),
+                .height(200.dp)
+                .padding(top = 22.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
