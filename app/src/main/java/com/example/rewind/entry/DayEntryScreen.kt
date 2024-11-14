@@ -74,6 +74,7 @@ import com.example.compose.RewindTheme
 import com.example.rewind.R
 import com.example.rewind.Screen
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rewind.SelectedBitmap
 import com.example.rewind.SharedViewModel
 import com.example.rewind.saveData
 import kotlinx.coroutines.flow.StateFlow
@@ -81,42 +82,58 @@ import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.time.LocalDate
 
-
+val permissions = arrayOf(
+    Manifest.permission.CAMERA,
+//    Manifest.permission.RECORD_AUDIO
+)
 @Composable
-fun DayEntryPermissionCheck(modifier: Modifier = Modifier, cameraStateEvent: (Boolean) -> Unit) {
+fun DayEntryPermissionCheck(modifier: Modifier = Modifier, permissionStateEvent: (Boolean) -> Unit, permission: String) {
     var permissionState by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val permissionResult = rememberSaveable {
-        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+        ContextCompat.checkSelfPermission(context, permission)
     }
     if (permissionResult == PackageManager.PERMISSION_DENIED) {
         if(!permissionState){
-            AlertDialog(
-                onDismissRequest = {
-                    permissionState = true
-                },
-                confirmButton = {
-                    Button(onClick = { permissionState = true }) {
-                        Text(text = "Allow Permission")
-                    }
-                },
-                title = { Text(text = "Camera Permission Needed") },
-                text = { Text(text = "Need Camera Permission to capture and add photos. You can refuse but your experience will be degraded.") }
-            )
+            PermissionRationaleDialog(
+                changePermissionState = { newVal -> permissionState = newVal },
+                permission = permission)
         }
         else{
-            RequestRewindPermission(permissionStateEvent = cameraStateEvent)
+            RequestRewindPermission(permissionStateEvent = permissionStateEvent, permission = permission)
         }
     } else {
         Log.i("DayEntryScreen", "Camera permissions have been granted")
-        cameraStateEvent(true)
+        permissionStateEvent(true)
     }
+}
+
+@Composable
+fun PermissionRationaleDialog(modifier: Modifier = Modifier, changePermissionState: (Boolean)->Unit, permission: String) {
+    val permissionName = when(permission){
+        Manifest.permission.CAMERA -> "Camera Permission"
+        Manifest.permission.RECORD_AUDIO -> "Audio Recording Permission"
+        else -> "Permission"
+    }
+    AlertDialog(
+        onDismissRequest = {
+             changePermissionState(true)
+        },
+        confirmButton = {
+            Button(onClick = { changePermissionState(true) }) {
+                Text(text = "Allow Permission")
+            }
+        },
+        title = { Text(text = "$permissionName Needed") },
+        text = { Text(text = "Need $permissionName to capture and add photos. You can refuse but your experience will be degraded. The permission can be enabled in the settings") }
+    )
 }
 
 @Composable
 fun RequestRewindPermission(
     modifier: Modifier = Modifier,
-    permissionStateEvent: (Boolean) -> Unit
+    permissionStateEvent: (Boolean) -> Unit,
+    permission: String
 ) {
     val cameraPermissionRequestLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -124,7 +141,7 @@ fun RequestRewindPermission(
             permissionStateEvent(isGranted)
         })
     SideEffect {
-        cameraPermissionRequestLauncher.launch(Manifest.permission.CAMERA)
+        cameraPermissionRequestLauncher.launch(permission)
     }
 }
 
@@ -161,7 +178,13 @@ fun DayEntryScreen(
     description: State<String>
 ) {
     var cameraPermission by remember { mutableStateOf(false) }
-    DayEntryPermissionCheck(cameraStateEvent = {isGranted -> cameraPermission=isGranted})
+//    var recordAudioPermission by remember { mutableStateOf(false) }
+    permissions.forEach {
+        DayEntryPermissionCheck(
+            permissionStateEvent = { isGranted -> cameraPermission = isGranted },
+            permission = it
+        )
+    }
     Scaffold(
         bottomBar = {
             BottomBarEntry(
@@ -238,7 +261,7 @@ fun TakenPicturesCarousel(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.height(200.dp)
         ) {
-            items(bitmaps) { item ->
+            items(items = bitmaps) { item ->
                 Surface(
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier
@@ -459,7 +482,7 @@ fun savePhotos(bitmaps: List<SelectedBitmap>, context: Context, saveBitmapURI: (
         val name = generateConsistentBitmapHash(it.bitmap)
         context.openFileOutput(name, MODE_PRIVATE).use { stream ->
                 if(it.isSelected.value){
-                    if (!it.bitmap.compress(Bitmap.CompressFormat.JPEG, 70, stream)) {
+                    if (!it.bitmap.compress(Bitmap.CompressFormat.JPEG, 60, stream)) {
                         Log.e("Save Photo", "Couldn't write to file")
                         context.deleteFile(name)
                     } else {

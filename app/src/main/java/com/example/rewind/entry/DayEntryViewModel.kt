@@ -78,5 +78,3 @@ class DayEntryViewModel(application: Application) :AndroidViewModel(application)
         Log.i("DayEntryViewModel", "Cleared ViewModel")
     }
 }
-
-data class SelectedBitmap(val bitmap: Bitmap, var isSelected: MutableState<Boolean> = mutableStateOf(true))

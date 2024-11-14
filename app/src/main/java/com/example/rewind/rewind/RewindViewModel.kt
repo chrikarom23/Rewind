@@ -40,12 +40,6 @@ class RewindViewModel(application: Application) : AndroidViewModel(application) 
         dayEntry.value = item
     }
 
-    fun getRandomDay(){
-        coroutineScope.launch {
-            Log.i("RewindViewModel", repository.getRandomDay().dayWord)
-        }
-    }
-
     fun addURI(bitmapURI: String){
         if(!bitmapsURI.value.contains(bitmapURI)) _bitmapsURI.value += bitmapURI
     }

@@ -1,5 +1,7 @@
 package com.example.rewind
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelStoreOwner
@@ -18,19 +20,19 @@ fun Navigation() {
     val navController = rememberNavController()
     val activity = LocalContext.current
     NavHost(navController = navController, startDestination = Screen.RewindScreen.route){
-        composable(route = Screen.RewindScreen.route) {
+        composable(route = Screen.RewindScreen.route, enterTransition = { fadeIn() }, exitTransition = { fadeOut() }, popEnterTransition = { fadeIn() }, popExitTransition = { fadeOut() }) {
             val rewindViewModel: RewindViewModel = viewModel(activity as ViewModelStoreOwner)
             val sharedViewModel: SharedViewModel = viewModel(activity as ViewModelStoreOwner)
             RewindScreen (navController = navController, rewindViewModel = rewindViewModel,sharedViewModel = sharedViewModel)
         }
 
-        composable(route = Screen.EntryScreen.route) {
+        composable(route = Screen.EntryScreen.route, enterTransition = { fadeIn() }, exitTransition = { fadeOut() }, popEnterTransition = { fadeIn() }, popExitTransition = { fadeOut() }) {
             val dayEntryViewModel: DayEntryViewModel = viewModel(activity as ViewModelStoreOwner)
             val sharedViewModel: SharedViewModel = viewModel(activity as ViewModelStoreOwner)
             DayEntry (navController = navController, viewModel = dayEntryViewModel, sharedViewModel = sharedViewModel)
         }
 
-        composable(route = Screen.CameraScreen.route){
+        composable(route = Screen.CameraScreen.route, enterTransition = { fadeIn() }, exitTransition = { fadeOut() }, popEnterTransition = { fadeIn() }, popExitTransition = { fadeOut() }){
             val sharedViewModel: SharedViewModel = viewModel(activity as ViewModelStoreOwner)
             CameraScreen(sharedViewModel = sharedViewModel)
         }

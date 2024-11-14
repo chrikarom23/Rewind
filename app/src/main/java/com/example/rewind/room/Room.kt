@@ -20,9 +20,6 @@ interface DaysDao{
 
     @Query("SELECT * FROM DAY_ENTRY ORDER BY date DESC")
     fun getAll(): LiveData<List<DayEntry>>
-
-    @Query("SELECT * FROM DAY_ENTRY ORDER BY RANDOM() LIMIT 1")
-    fun getRandomDay(): DayEntry
 }
 
 @Database(entities = [DayEntry::class], version=2, exportSchema = true)

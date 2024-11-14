@@ -13,6 +13,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -49,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +71,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -79,7 +82,10 @@ import com.example.rewind.SharedViewModel
 import com.example.rewind.getData
 import com.example.rewind.room.DayEntry
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import java.time.LocalDate
+import kotlin.random.Random
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -95,6 +101,8 @@ fun RewindScreen(
             lazyListState.canScrollForward
         }
     }
+    val coroutineScope = rememberCoroutineScope()
+
     val dayEntry by rewindViewModel.dayEntry.collectAsState() //remember { mutableStateOf<DayEntry?>(null) }
     val haptics = LocalHapticFeedback.current
 
@@ -103,10 +111,17 @@ fun RewindScreen(
     val editState by sharedViewModel.editState.collectAsState()
 
     val selectedBitmaps by sharedViewModel.selectedBitmaps.collectAsState()
-    val bitmapsURI by rewindViewModel.bitmapsURI.collectAsState()
-
     fun navigateTo(route: String) {
         navController.navigate(route)
+    }
+
+    fun goToRandomDay(){
+        coroutineScope.launch {
+            val elementCount = lazyListState.layoutInfo.totalItemsCount
+            val random = Random.nextInt(until = elementCount-1)
+            lazyListState.animateScrollToItem(random, scrollOffset = 0)
+            rewindViewModel.setDayEntry(daysGoneBy?.get(random))
+        }
     }
 
     Scaffold(
@@ -117,7 +132,7 @@ fun RewindScreen(
                 lastUpdated = lastUpdated
             )
         },
-        topBar = { TopBar(getRandomDay = rewindViewModel::getRandomDay) },
+        topBar = { TopBar(getRandomDay = ::goToRandomDay) },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         if (dayEntry != null) {
@@ -165,7 +180,7 @@ fun RewindScreen(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = TopWithLogo,
         ) {
-            items(daysGoneBy?: emptyList()) { item ->
+            items(items = daysGoneBy?: emptyList(), key = {it.date}) { item ->
                 DayItem(
                     item = item,
                     modifier = Modifier.combinedClickable(enabled = true, onLongClick = {
@@ -220,14 +235,18 @@ fun LazyListFooter(modifier: Modifier = Modifier, cannotScrollForward: Boolean) 
                 enter = fadeIn(animationSpec = tween(durationMillis = 600)),
                 exit = fadeOut(animationSpec = tween(durationMillis = 600))
             ) {
-                Text(
-                    text = "Rewind",
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .wrapContentHeight(Alignment.CenterVertically),
-                    style = MaterialTheme.typography.displayLarge,
-                    fontStyle = FontStyle.Italic
-                )
+                Row(modifier = Modifier
+                    .padding(10.dp)
+                    .wrapContentHeight(Alignment.CenterVertically),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically){
+                    Text(
+                        text = "Rewind",
+                        style = MaterialTheme.typography.displayLarge,
+                        fontStyle = FontStyle.Italic
+                    )
+                    Image(painter = painterResource(id = R.drawable.icon), contentDescription = "Rewind Logo", modifier = Modifier.size(70.dp).padding(start = 4.dp))
+                }
             }
         }
     }
@@ -344,7 +363,7 @@ fun GetRatingIcon(modifier: Modifier = Modifier, dayRating: Int) {
                 3 -> R.drawable.neutral
                 4 -> R.drawable.smile
                 5 -> R.drawable.pleased
-                else -> R.drawable.ic_launcher_foreground
+                else -> R.drawable.icon
             }
         }
     }
@@ -361,7 +380,7 @@ fun DayPics(modifier: Modifier = Modifier, imageURIs: List<String>) {
     val context = LocalContext.current
 
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 6.dp)) {
-        items(imageURIs) { uri ->
+        items(items = imageURIs, key = {it}) { uri ->
             val img = loadPhoto(uri, context)
             if (img != null) {
                 Surface(
@@ -402,7 +421,7 @@ fun AddDayEntry(
     navigateToDayEntry: (String) -> Unit,
     lastUpdated: String?
 ) {
-    if (lastUpdated != null && lastUpdated != LocalDate.now().toString()) {
+    if (lastUpdated == null || lastUpdated != LocalDate.now().toString()) {
         FloatingActionButton(
             onClick = {
                 navigateToDayEntry(Screen.EntryScreen.route)
@@ -460,12 +479,7 @@ fun GreetingPreviewNight() {
 fun RewindScreenPreview(modifier: Modifier = Modifier) {
     val dayData = mutableListOf(
         DayEntry("Monday", "1/1/2001", "Good ig", 4, listOf()),
-        DayEntry("Tuesday", "1/1/2001", "Good ig", -1, listOf()),
-        DayEntry("Wednesday", "1/1/2001", "Good ig", 3, listOf()),
-        DayEntry("Thursday", "1/1/2001", "Good ig", 4, listOf()),
-        DayEntry("Friday", "1/1/2001", "Good ig", 4, listOf()),
-        DayEntry("Saturday", "1/1/2001", "Good ig", 4, listOf()),
-        DayEntry("Sunday", "1/1/2001", "Good ig", 4, listOf())
+        DayEntry("Tuesday", "1/1/2001", "Good ig", -1, listOf())
     )
 
     val systemUiController = rememberSystemUiController()

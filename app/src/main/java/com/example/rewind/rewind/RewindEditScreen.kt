@@ -70,7 +70,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.compose.RewindTheme
 import com.example.rewind.R
 import com.example.rewind.Screen
-import com.example.rewind.entry.SelectedBitmap
+import com.example.rewind.SelectedBitmap
 import com.example.rewind.entry.savePhotos
 import com.example.rewind.room.DayEntry
 import java.time.LocalDate

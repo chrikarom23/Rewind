@@ -31,8 +31,4 @@ class Repository(private val database: RewindDatabase) {
     }
 
     val daysGoneBy: LiveData<List<DayEntry>> = database.daysDao().getAll()
-
-    fun getRandomDay(): DayEntry{
-        return database.daysDao().getRandomDay()
-    }
 }
